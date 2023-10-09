@@ -110,9 +110,14 @@ def plot_lanes(image):
 
 #     st.pyplot(fig)
 
+# @st.cache_data
+# def annotate_frames(frames):
+#   ...
+
 
 def play_output(frames):
     st.subheader("Preview")
+    # annotated_frames = annotate_frames(params)
     annotated_frames = np.array([plot_lanes(img) for img in frames])
 
     # Create a figure
