@@ -7,6 +7,8 @@ import numpy as np
 import cv2
 import math
 from array2gif import write_gif
+from PIL import Image
+import streamlit.components.v1 as components
 
 DEFAULT_VIDEO = "highway.mp4"
 # tab title and favicon
@@ -15,22 +17,9 @@ st.set_page_config(
     page_icon="🚗"
 )
 
-# detection_parameters
-# params = {
-#     'canny_low': 24,
-#     'canny_high': 113,
-#     'kernel_size': 5,
-#     'rho': 1,
-#     'theta': np.pi/180,
-#     'hough_threshold': 1,
-#     'min_line_length': 5,
-#     'max_line_gap': 1,
-#     'hide_canny':False,
-#     'hide_hough':False
-# }
 
 st.session_state.params = {}
-st.session_state.video_ready = False
+# st.session_state.video_ready = False
 st.session_state.fps = 30
 
 
@@ -113,70 +102,47 @@ def plot_lanes(image):
     return lines_edges
     # plt.imshow(lines_edges)
 
-
-@st.cache_data
-def annotate_video(frame_arr, fps):
-    """annotate lanes in video"""
-    annotated_frames = np.array([plot_lanes(img) for img in frame_arr], dtype=np.int32)
-     
-    # # Create a figure
-    # fig = plt.figure()
-    # plt.axis('off')
-
-    # # Define a function to update the image in the figure
-    # def update_image(n):
-    #     plt.imshow(annotated_frames[n])
-
-    # # Create an animation object
-    # anim = animation.FuncAnimation(fig, update_image, frames=len(annotated_frames))
-
-    # anim.save('output.mp4', writer='ffmpeg', fps=30)
-
-    write_gif(annotated_frames, 'output.gif', fps=fps)
-    st.download_button('Download video', 'output.gif')
-
-# display preview
-def preview(frame_arr, index:int=10):
-    st.subheader("Preview")
-    fig, ax = plt.subplots()
-    ax.imshow(plot_lanes(frame_arr[index]))
-    plt.axis('off')
-
-    st.pyplot(fig)
-
-st.title('Simple Lane Detection')
-"""With [Canny Edge detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) + [Hough Transform](https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html)"""
-
-
-
-# if 'is_default' not in st.session_state:
-#     st.session_state.is_default = True
-
-# if st.session_state.is_default:
-#     myBtn = st.button('Choose your video')
-#     st.session_state.is_default = False
-
-#     st.subheader("Preview (default video)")
+# # display preview
+# def preview(frame):
 #     fig, ax = plt.subplots()
-#     ax.imshow(plot_lanes(st.session_state.frames[0]))
+#     ax.imshow(plot_lanes(frame))
 #     plt.axis('off')
 
 #     st.pyplot(fig)
 
-# else:
-#     myBtn = st.button('Use default video')
-#     st.session_state.is_default = True
+def play_output(frames):
+    st.subheader("Preview")
+    annotated_frames = np.array([plot_lanes(img) for img in frames])
 
-#     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
-#     if video is not None:
-#         st.session_state.frames = iio.imread(video, plugin="pyav")
+    # Create a figure
+    fig = plt.figure()
+    plt.axis('off')
 
-#         st.subheader("Preview (your video)")
-#         fig, ax = plt.subplots()
-#         ax.imshow(plot_lanes(st.session_state.frames[0]))
-#         plt.axis('off')
+    # Define a function to update the image in the figure
+    def update_image(n):
+        plt.imshow(annotated_frames[n])
 
-#         st.pyplot(fig)
+    # Create an animation object
+    anim = animation.FuncAnimation(fig, update_image, frames=10, interval=100)
+
+    components.html(anim.to_jshtml(), height=800)
+
+    # try:
+    #     plt.axis('off')
+        
+    #     # Create an image object from the NumPy array
+    #     image = Image.fromarray(annotated_frames)
+
+    #     # Save the image as a GIF
+    #     image.save("output.gif", format="GIF")
+    #     # write_gif(annotated_frames, 'output.gif', fps=st.session_state.fps)
+    # except Exception as e:
+    #     st.exception(e)
+
+
+
+st.title('Traditional Lane Detection')
+"""With [Canny Edge detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) + [Hough Transform](https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html)"""
 
 with st.sidebar:
     st.subheader("Canny Edge Detection Parameters") 
@@ -204,22 +170,20 @@ default, upload_tab = st.tabs(['default', 'upload video'])
 
 with default:
     frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")
-    st.session_state.fps = min(st.session_state.fps, cv2.VideoCapture(DEFAULT_VIDEO).get(cv2.CAP_PROP_FPS)) # get fps in original video
+    play_output(frames)
 
-    preview(frames) # display preview
-    if st.button('Process full video', key='process_default'):
-        annotate_video(frames, st.session_state.fps) # annotated default video
+    # if st.button('Process full video', key='process_default'):
+    #     play_output(frames) # annotated default video
+    #     # st.download_button('Download video', 'output.gif')
         
 with upload_tab:
     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
     if video is not None:
         uploaded_frames = iio.imread(video.getvalue(), plugin="pyav") 
-        st.session_state.fps = min(st.session_state.fps, cv2.VideoCapture(video.name).get(cv2.CAP_PROP_FPS)) # get fps in original video
-        
-        preview(uploaded_frames) # display preview
+        st.session_state.fps = max(st.session_state.fps, cv2.VideoCapture(video.name).get(cv2.CAP_PROP_FPS)) # get fps in uploaded video
 
         if st.button('Process full video', key='process_upload'):
-            annotate_video(uploaded_frames, st.session_state.fps) # annotated uploaded video
+            play_output(uploaded_frames) # annotated uploaded video
+            st.download_button('Download video', 'output.gif')
 
-if st.button('Stop execution'):
-    st.stop()
+
