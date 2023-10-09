@@ -110,6 +110,7 @@ def plot_lanes(image):
 
 #     st.pyplot(fig)
 
+
 def play_output(frames):
     st.subheader("Preview")
     annotated_frames = np.array([plot_lanes(img) for img in frames])
@@ -156,13 +157,11 @@ with st.sidebar:
         st.subheader("Hough Transform Parameters") 
         st.toggle('Hide Hough Transform', key='hide_hough')
         if not st.session_state.hide_hough:
-            st.session_state.params['rho'] = st.slider('rho', 0, 100, 12, help='distance resolution in pixels of the Hough grid')
-
-            # note that min_theta is 1
+            st.session_state.params['rho'] = st.slider('rho', 0, 100, 5, help='distance resolution in pixels of the Hough grid')
             st.session_state.params['theta'] = math.radians(min(1, st.slider('theta (will be converted to radians)', 0, 360, 60, step=1, help='angular resolution in pixels of the Hough grid')))
             st.session_state.params['hough_threshold'] = st.slider('threshold', value=1, help='minimum number of votes (intersections in Hough grid cell)')
             st.session_state.params['min_line_length'] = st.number_input('minimum line length', value=25, help='minimum number of pixels making up a line')
-            st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', value=3, help='maximum gap in pixels between connectable line segments')
+            st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', value=3.0, help='maximum gap in pixels between connectable line segments')
         
 
 
