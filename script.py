@@ -8,7 +8,7 @@ import cv2
 import math
 from array2gif import write_gif
 
-
+DEFAULT_VIDEO = "highway.mp4"
 # tab title and favicon
 st.set_page_config(
     page_title="Lane Detection",
@@ -52,7 +52,8 @@ def plot_lanes(image):
     max_line_gap. maximum gap in pixels between connectable line segments
     """
 
-    if st.session_state.hide_canny:
+    if st.session_state.get('hide_canny') and st.session_state.hide_canny:
+        cv2.destroyAllWindows() # close all windows
         return image
 
     gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY) # convert image to gray
@@ -68,6 +69,10 @@ def plot_lanes(image):
     edges = cv2.Canny(blur_gray, st.session_state.params['canny_low'], st.session_state.params['canny_high'])
 
     # return edges
+    if st.session_state.get('hide_hough') and st.session_state.hide_hough:
+        cv2.destroyAllWindows() # close all windows
+        return edges
+
 
     # Next we'll create a masked edges image using cv2.fillPoly()
     mask = np.zeros_like(edges)
@@ -78,12 +83,6 @@ def plot_lanes(image):
     vertices = np.array([[(0,imshape[0]),(0, 0), (imshape[1], 0), (imshape[1],imshape[0])]], dtype=np.int32)
     cv2.fillPoly(mask, vertices, ignore_mask_color)
     masked_edges = cv2.bitwise_and(edges, mask)
-
-    if st.session_state.hide_hough:
-        return masked_edges
-
-
-    # return edges
 
     # Make a blank the same size as our image to draw on
     line_image = np.copy(image)*0 # creating a blank to draw lines on
@@ -108,6 +107,8 @@ def plot_lanes(image):
 
     # Draw the lines on the edge image
     lines_edges = cv2.addWeighted(color_edges, 0.8, line_image, 1, 0)
+
+    cv2.destroyAllWindows() # close all windows
     return lines_edges
     # plt.imshow(lines_edges)
 
@@ -119,6 +120,7 @@ def annotate_video(frame_arr, fps):
      
     # # Create a figure
     # fig = plt.figure()
+    # plt.axis('off')
 
     # # Define a function to update the image in the figure
     # def update_image(n):
@@ -144,7 +146,7 @@ def preview(frame_arr, index:int=10):
     st.pyplot(fig)
 
 st.title('Simple Lane Detection')
-"""With Canny Edge detection + Hough Transform"""
+"""With [Canny Edge detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) + [Hough Transform](https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html)"""
 
 
 
@@ -179,45 +181,51 @@ st.title('Simple Lane Detection')
 
 with st.sidebar:
     st.subheader("Canny Edge Detection Parameters") 
-    
-    if not st.toggle('Hide Canny Edge Detection'):
-        st.session_state.params['canny_low'], st.session_state.params['canny_high'] = st.slider('threshold range', 0, 200, (24, 113), help="")
+    st.toggle('Hide Canny Edge Detection', key='hide_canny')
+
+    if not st.session_state.hide_canny:
+        st.session_state.params['canny_low'], st.session_state.params['canny_high'] = st.slider('threshold range', 0, 200, (80, 180), help="")
+        st.session_state.params['kernel_size'] = st.number_input('kernel size (odd number)', min_value=1, max_value=50, value=5, step=2, help='kernel size for Gaussian Smoothing to remove noise')
         "---" # divider
         st.subheader("Hough Transform Parameters") 
-        if not st.toggle('Hide Hough Transform'):
-            st.session_state.params['kernel_size'] = st.number_input('kernel size', min_value=1, max_value=50, value=5, step=1, help='')
+        st.toggle('Hide Hough Transform', key='hide_hough')
+        if not st.session_state.hide_hough:
             st.session_state.params['rho'] = st.slider('rho', 0, 100, 12, help='distance resolution in pixels of the Hough grid')
-            st.session_state.params['theta'] = math.radians(st.slider('theta (will be converted to radians)', 0, 360, 60, step=1, help='angular resolution in pixels of the Hough grid'))
+
+            # note that min_theta is 1
+            st.session_state.params['theta'] = math.radians(min(1, st.slider('theta (will be converted to radians)', 0, 360, 60, step=1, help='angular resolution in pixels of the Hough grid')))
             st.session_state.params['hough_threshold'] = st.slider('threshold', value=1, help='minimum number of votes (intersections in Hough grid cell)')
-            st.session_state.params['min_line_length'] = st.number_input('minimum line length', help='minimum number of pixels making up a line')
-            st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', help='maximum gap in pixels between connectable line segments')
+            st.session_state.params['min_line_length'] = st.number_input('minimum line length', value=5, help='minimum number of pixels making up a line')
+            st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', value=0.3, help='maximum gap in pixels between connectable line segments')
+        
 
 
 default, upload_tab = st.tabs(['default', 'upload video'])
 
 
 with default:
-    frames = iio.imread("highway.mp4", plugin="pyav")
-    fps = cv2.VideoCapture("lane_driving.mp4").get(cv2.CAP_PROP_FPS) # get fps in original video
+    frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")
+    st.session_state.fps = int(cv2.VideoCapture(DEFAULT_VIDEO).get(cv2.CAP_PROP_FPS)) # get fps in original video
 
     preview(frames) # display preview
     if st.button('Process full video', key='process_default'):
-        annotate_video(frames, fps)
-        if st.session_state.video_ready:
-            st.download_button('Download video', 'output.gif')
-
+        annotate_video(frames, st.session_state.fps) # annotated default video
+        
 with upload_tab:
     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
     if video is not None:
         uploaded_frames = iio.imread(video.getvalue(), plugin="pyav") 
-        fps = cv2.VideoCapture("lane_driving.mp4").get(cv2.CAP_PROP_FPS) # get fps in original video
+        st.session_state.fps = int(cv2.VideoCapture(video.getvalue()).get(cv2.CAP_PROP_FPS)) # get fps in original video
         
         preview(uploaded_frames) # display preview
 
         if st.button('Process full video', key='process_upload'):
-            annotate_video(uploaded_frames, fps)
-            if st.session_state.video_ready:
-                st.download_button('Download video', 'output.gif')
+            annotate_video(uploaded_frames, st.session_state.fps) # annotated uploaded video
+
+# st.session_state.fps
+
+if st.session_state.video_ready:
+            st.download_button('Download video', 'output.gif')
 
 # # toggle button to load/download video
 # proc_button = st.empty()
