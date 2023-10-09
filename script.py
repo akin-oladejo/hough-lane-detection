@@ -126,6 +126,7 @@ def play_output(frames):
     anim = animation.FuncAnimation(fig, update_image, frames=10, interval=100)
 
     components.html(anim.to_jshtml(), height=800)
+    # st.pyplot(anim)
 
     # try:
     #     plt.axis('off')
@@ -172,18 +173,12 @@ with default:
     frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")
     play_output(frames)
 
-    # if st.button('Process full video', key='process_default'):
-    #     play_output(frames) # annotated default video
-    #     # st.download_button('Download video', 'output.gif')
         
 with upload_tab:
     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
     if video is not None:
         uploaded_frames = iio.imread(video.getvalue(), plugin="pyav") 
-        st.session_state.fps = max(st.session_state.fps, cv2.VideoCapture(video.name).get(cv2.CAP_PROP_FPS)) # get fps in uploaded video
+        play_output(uploaded_frames)
 
-        if st.button('Process full video', key='process_upload'):
-            play_output(uploaded_frames) # annotated uploaded video
-            st.download_button('Download video', 'output.gif')
 
 
