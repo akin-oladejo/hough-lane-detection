@@ -31,6 +31,7 @@ st.set_page_config(
 
 st.session_state.params = {}
 st.session_state.video_ready = False
+st.session_state.fps = 30
 
 
 # define function to detect lanes
@@ -132,9 +133,7 @@ def annotate_video(frame_arr, fps):
     # anim.save('output.mp4', writer='ffmpeg', fps=30)
 
     write_gif(annotated_frames, 'output.gif', fps=fps)
-
-    # update state
-    st.session_state.video_ready = True
+    st.download_button('Download video', 'output.gif')
 
 # display preview
 def preview(frame_arr, index:int=10):
@@ -195,8 +194,8 @@ with st.sidebar:
             # note that min_theta is 1
             st.session_state.params['theta'] = math.radians(min(1, st.slider('theta (will be converted to radians)', 0, 360, 60, step=1, help='angular resolution in pixels of the Hough grid')))
             st.session_state.params['hough_threshold'] = st.slider('threshold', value=1, help='minimum number of votes (intersections in Hough grid cell)')
-            st.session_state.params['min_line_length'] = st.number_input('minimum line length', value=5, help='minimum number of pixels making up a line')
-            st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', value=0.3, help='maximum gap in pixels between connectable line segments')
+            st.session_state.params['min_line_length'] = st.number_input('minimum line length', value=25, help='minimum number of pixels making up a line')
+            st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', value=3, help='maximum gap in pixels between connectable line segments')
         
 
 
@@ -205,7 +204,7 @@ default, upload_tab = st.tabs(['default', 'upload video'])
 
 with default:
     frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")
-    st.session_state.fps = int(cv2.VideoCapture(DEFAULT_VIDEO).get(cv2.CAP_PROP_FPS)) # get fps in original video
+    st.session_state.fps = min(st.session_state.fps, cv2.VideoCapture(DEFAULT_VIDEO).get(cv2.CAP_PROP_FPS)) # get fps in original video
 
     preview(frames) # display preview
     if st.button('Process full video', key='process_default'):
@@ -215,79 +214,12 @@ with upload_tab:
     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
     if video is not None:
         uploaded_frames = iio.imread(video.getvalue(), plugin="pyav") 
-        st.session_state.fps = int(cv2.VideoCapture(video.getvalue()).get(cv2.CAP_PROP_FPS)) # get fps in original video
+        st.session_state.fps = min(st.session_state.fps, cv2.VideoCapture(video.name).get(cv2.CAP_PROP_FPS)) # get fps in original video
         
         preview(uploaded_frames) # display preview
 
         if st.button('Process full video', key='process_upload'):
             annotate_video(uploaded_frames, st.session_state.fps) # annotated uploaded video
 
-# st.session_state.fps
-
-if st.session_state.video_ready:
-            st.download_button('Download video', 'output.gif')
-
-# # toggle button to load/download video
-# proc_button = st.empty()
-# select_video = proc_button.button('Process full video', key='select_new')
-# if select_video:
-#     proc_button.button('Download')
-    
-# # show preview on chosen video
-# if st.session_state["select_new"]:
-#     # choose video
-#     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
-#     if video is not None:
-#         st.session_state.frames = iio.imread(video.name, plugin="pyav")
-#         preview()
-# else:
-#     st.session_state.frames = iio.imread("lane_driving.mp4", plugin="pyav")
-#     preview()  # display preview
-
-
-
-
-
-
-
-# frames = iio.imread("lane_driving.mp4", plugin="pyav") # set default video
-# preview(frames)
-
-# def upload():
-#     video = st.file_uploader("Select a video from your files", type=["mp4", "mpeg"])
-#     video
-#     # if video is not None:
-#         # frames = iio.imread(video.name, plugin="pyav")
-#         # preview(frames)
-#         # frames.shape
-
-# st.button('Upload a video', on_click=upload)
-
-
-# st.video(frames)
-
-
-# # video_path = os.getcwd() + video.filename
-# if video is not None:
-#     sample = frames
-# else:
-#     video_path = "lane_driving.mp4"
-
-
-# plt.imshow();
-
-
-# # Create a figure
-# fig = plt.figure()
-
-
-# # Define a function to update the image in the figure
-# def update_image(n):
-#     plt.imshow(annotated_frames[n])
-
-
-# # Create an animation object
-# anim = animation.FuncAnimation(fig, update_image, frames=len(annotated_frames))
-
-
-# # anim.save('annotated_lanes.mp4', writer='ffmpeg', fps=30)
+if st.button('Stop execution'):
+    st.stop()
