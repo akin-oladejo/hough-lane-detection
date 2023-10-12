@@ -9,15 +9,15 @@ import math
 import streamlit.components.v1 as components
 
 DEFAULT_VIDEO = "highway.mp4"
+
 # tab title and favicon
 st.set_page_config(
     page_title="Lane Detection",
     page_icon="🚗"
 )
 
-
+# session state
 st.session_state.params = {}
-st.session_state.n_frames = 10
 st.session_state.fps = 30
 
 
@@ -46,12 +46,8 @@ def plot_lanes(image):
 
     gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY) # convert image to gray
 
-    # return gray
-
     # Define a kernel size and apply Gaussian smoothing to remove noise
     blur_gray = cv2.GaussianBlur(gray,(st.session_state.params['kernel_size'], st.session_state.params['kernel_size']),0)
-
-    # return blur_gray
 
     # Define our parameters for Canny and apply
     edges = cv2.Canny(blur_gray, st.session_state.params['canny_low'], st.session_state.params['canny_high'])
@@ -98,24 +94,9 @@ def plot_lanes(image):
 
     cv2.destroyAllWindows() # close all windows
     return lines_edges
-    # plt.imshow(lines_edges)
-
-# # display preview
-# def preview(frame):
-#     fig, ax = plt.subplots()
-#     ax.imshow(plot_lanes(frame))
-#     plt.axis('off')
-
-#     st.pyplot(fig)
-
-# @st.cache_data
-# def annotate_frames(frames):
-#   ...
-
 
 def play_output(frames):
     st.subheader("Preview")
-    # annotated_frames = annotate_frames(params)
     annotated_frames = np.array([plot_lanes(img) for img in frames])
 
     # Create a figure
@@ -129,33 +110,17 @@ def play_output(frames):
     # Create an animation object
     anim = animation.FuncAnimation(fig, update_image, frames=15, interval=100)
 
-    components.html(anim.to_jshtml(), height=800)
-    # st.pyplot(anim)
-
-    # try:
-    #     plt.axis('off')
-        
-    #     # Create an image object from the NumPy array
-    #     image = Image.fromarray(annotated_frames)
-
-    #     # Save the image as a GIF
-    #     image.save("output.gif", format="GIF")
-    #     # write_gif(annotated_frames, 'output.gif', fps=st.session_state.fps)
-    # except Exception as e:
-    #     st.exception(e)
+    components.html(anim.to_jshtml(), height=800) # return html frame
 
 
-
-st.title('Traditional Lane Detection')
-"""With [Canny Edge detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) + [Hough Transform](https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html)"""
-
+# Side bar for adjusting parameters
 with st.sidebar:
     st.subheader("Canny Edge Detection Parameters") 
     st.toggle('Hide Canny Edge Detection', key='hide_canny')
 
     if not st.session_state.hide_canny:
-        st.session_state.params['canny_low'], st.session_state.params['canny_high'] = st.slider('threshold range', 0, 200, (80, 180), help="")
-        st.session_state.params['kernel_size'] = st.number_input('kernel size (odd number)', min_value=1, max_value=50, value=5, step=2, help='kernel size for Gaussian Smoothing to remove noise')
+        st.session_state.params['canny_low'], st.session_state.params['canny_high'] = st.slider('threshold range', 0, 200, (80, 180), help="threshold limits for the hysteresis procedure")
+        st.session_state.params['kernel_size'] = st.number_input('kernel size (odd number)', min_value=1, max_value=11, value=5, step=2, help='kernel size for supplementary gaussian smoothing')
         "---" # divider
         st.subheader("Hough Transform Parameters") 
         st.toggle('Hide Hough Transform', key='hide_hough')
@@ -165,11 +130,15 @@ with st.sidebar:
             st.session_state.params['hough_threshold'] = st.slider('threshold', value=1, help='minimum number of votes (intersections in Hough grid cell)')
             st.session_state.params['min_line_length'] = st.number_input('minimum line length', value=25, help='minimum number of pixels making up a line')
             st.session_state.params['max_line_gap'] = st.number_input('maximum line gap', value=3.0, help='maximum gap in pixels between connectable line segments')
-        
 
+# main section
 
-default, upload_tab = st.tabs(['default', 'upload video'])
+# title and description
+st.title('Traditional Lane Detection')
+"""With [Canny Edge detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) + [Hough Transform](https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html)"""
 
+# two tabs for default and uploaded videos
+default, upload_tab = st.tabs(['Default video', 'Upload video'])
 
 with default:
     frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")[:15]
@@ -181,6 +150,3 @@ with upload_tab:
     if video is not None:
         uploaded_frames = iio.imread(video.getvalue(), plugin="pyav")[:15]
         play_output(uploaded_frames)
-
-
-
