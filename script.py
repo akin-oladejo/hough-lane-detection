@@ -6,8 +6,6 @@ from matplotlib import animation
 import numpy as np
 import cv2
 import math
-from array2gif import write_gif
-from PIL import Image
 import streamlit.components.v1 as components
 
 DEFAULT_VIDEO = "highway.mp4"
@@ -19,7 +17,7 @@ st.set_page_config(
 
 
 st.session_state.params = {}
-# st.session_state.video_ready = False
+st.session_state.n_frames = 10
 st.session_state.fps = 30
 
 
@@ -129,7 +127,7 @@ def play_output(frames):
         plt.imshow(annotated_frames[n])
 
     # Create an animation object
-    anim = animation.FuncAnimation(fig, update_image, frames=10, interval=100)
+    anim = animation.FuncAnimation(fig, update_image, frames=15, interval=100)
 
     components.html(anim.to_jshtml(), height=800)
     # st.pyplot(anim)
@@ -174,14 +172,14 @@ default, upload_tab = st.tabs(['default', 'upload video'])
 
 
 with default:
-    frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")
+    frames = iio.imread(DEFAULT_VIDEO, plugin="pyav")[:15]
     play_output(frames)
 
         
 with upload_tab:
     video = st.file_uploader("Select a video from your files", accept_multiple_files=False)
     if video is not None:
-        uploaded_frames = iio.imread(video.getvalue(), plugin="pyav") 
+        uploaded_frames = iio.imread(video.getvalue(), plugin="pyav")[:15]
         play_output(uploaded_frames)
 
 
