@@ -1,4 +1,1 @@
-.venv/
-Pipfile
-Pipfile.lock
 hough_lane_detection.ipynb
