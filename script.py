@@ -41,7 +41,7 @@ def plot_lanes(image):
     """
 
     if st.session_state.get('hide_canny') and st.session_state.hide_canny:
-        cv2.destroyAllWindows() # close all windows
+        # cv2.destroyAllWindows() # close all windows
         return image
 
     gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY) # convert image to gray
@@ -54,7 +54,7 @@ def plot_lanes(image):
 
     # return edges
     if st.session_state.get('hide_hough') and st.session_state.hide_hough:
-        cv2.destroyAllWindows() # close all windows
+        # cv2.destroyAllWindows() # close all windows
         return edges
 
 
@@ -92,7 +92,7 @@ def plot_lanes(image):
     # Draw the lines on the edge image
     lines_edges = cv2.addWeighted(color_edges, 0.8, line_image, 1, 0)
 
-    cv2.destroyAllWindows() # close all windows
+    # cv2.destroyAllWindows() # close all windows
     return lines_edges
 
 def play_output(frames):
